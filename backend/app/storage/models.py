@@ -1,4 +1,4 @@
-"""Database model placeholders.
+"""数据库模型占位文件。
 
-SQLAlchemy or SQLModel models will be added when persistence is implemented.
+后续实现持久化时，会在这里补充 SQLAlchemy 或 SQLModel 模型。
 """

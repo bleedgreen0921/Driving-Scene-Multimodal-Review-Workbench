@@ -12,6 +12,7 @@ async def analyze_sample(
     context_text: str | None = Form(default=None),
     rule_profile: str = Form(default="default_driving_scene"),
 ) -> AnalyzeSampleResponse:
+    """使用当前 mock 流程分析一张上传的道路图像。"""
     return analyze_sample_mock(
         filename=image.filename or "uploaded_image",
         context_text=context_text,

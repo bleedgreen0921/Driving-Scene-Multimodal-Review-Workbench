@@ -1,1 +1,1 @@
-"""Core configuration and infrastructure."""
+"""核心配置与基础设施。"""

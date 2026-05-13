@@ -7,6 +7,7 @@ def apply_review_action(
     comment: str | None = None,
     final_result: dict | None = None,
 ) -> ReviewRecord:
+    """将复核动作映射为需要持久化保存的复核状态。"""
     status_map = {
         ReviewAction.approve: ReviewStatus.approved,
         ReviewAction.edit: ReviewStatus.edited,

@@ -1,1 +1,1 @@
-"""Repository placeholders for task, sample, review, and evaluation records."""
+"""任务、样本、复核和评测记录的仓储层占位文件。"""

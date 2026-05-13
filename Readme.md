@@ -2,13 +2,14 @@
 
 面向自动驾驶 / 道路场景的多模态质检、评测与人工复核工作台。
 
-本项目接收道路场景图像或图文样本，自动完成场景分析、结构化结果生成、规则核验和风险判定，并将低置信度或高风险样本送入人工复核队列。同时支持批量评测、bad case 分析和结果回流，重点展示多模态 AI 应用、结构化输出、工作流编排与 human-in-the-loop 工程能力。
+本项目来源于道路导流场景多模态模型微调工作。系统接收道路场景图像或图文样本，使用微调后的多模态模型作为数据挖掘前置过滤器，自动判断样本是否属于分流导流或合流导流场景，并完成结构化结果生成、规则核验和风险判定；低置信度或高风险样本会进入人工复核队列。同时支持批量评测、bad case 分析和结果回流，重点展示多模态 AI 应用、结构化输出、工作流编排与 human-in-the-loop 工程能力。
 
 > 当前状态：项目规划阶段。本文档用于对外展示项目目标和最终交付形态，详细开发规划见 [docs/project-plan.md](docs/project-plan.md)。
 
 ## 项目亮点
 
 - 多模态输入：支持道路场景图像，以及可选的上下文文本、参考标注和规则模板。
+- 导流场景筛选：面向稀疏导流样本，区分分流导流、合流导流、非导流和不确定样本。
 - 结构化输出：使用固定 schema 约束模型结果，避免自由文本难以评测和回流。
 - 规则核验：用显式规则检查字段完整性、枚举合法性和场景逻辑一致性。
 - 风险判定：根据低置信度、规则冲突、字段缺失和异常解释标记风险等级。
@@ -116,7 +117,7 @@ POST /api/samples/analyze
 Content-Type: multipart/form-data
 
 image=@road_scene.jpg
-context_text=Check whether the scene label and key objects are reasonable.
+context_text=Check whether this sample is a split or merge diversion scene.
 rule_profile=default_driving_scene
 ```
 
@@ -125,12 +126,28 @@ rule_profile=default_driving_scene
 ```json
 {
   "task_id": "sample_001",
-  "scene_type": "urban_intersection",
-  "key_objects": ["traffic_light", "crosswalk", "vehicle", "pedestrian"],
-  "issues": ["possible_missing_pedestrian_label"],
-  "confidence": 0.78,
-  "rule_pass": false,
-  "risk_level": "needs_human_review",
+  "analysis": {
+    "is_diversion_scene": true,
+    "diversion_type": "split",
+    "key_objects": ["traffic_cone", "lane_marking", "temporary_sign"],
+    "visual_evidence": ["lane is guided away by cones"],
+    "negative_evidence": [],
+    "confidence": 0.82,
+    "explanation": "The cone layout guides traffic away from the original lane."
+  },
+  "validation": {
+    "schema_valid": true,
+    "rule_pass": true,
+    "rule_violations": []
+  },
+  "risk": {
+    "risk_level": "low",
+    "reasons": []
+  },
+  "filter_decision": {
+    "action": "keep",
+    "reasons": ["high_confidence_diversion_scene"]
+  },
   "review_status": "pending"
 }
 ```

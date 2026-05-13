@@ -29,7 +29,21 @@ Content-Type: multipart/form-data
 - `analysis`
 - `validation`
 - `risk`
+- `filter_decision`
 - `review_status`
+
+`analysis.diversion_type` 使用粗粒度导流分类：
+
+- `split`: 分流导流
+- `merge`: 合流导流
+- `non_diversion`: 非导流
+- `uncertain`: 疑似或无法判断
+
+`filter_decision.action` 用于数据挖掘前置过滤：
+
+- `keep`: 高置信导流样本，进入后续挖掘结果。
+- `review`: 低置信、冲突或证据不足，进入人工复核。
+- `discard`: 高置信非导流样本，过滤掉。
 
 ## Reviews
 
