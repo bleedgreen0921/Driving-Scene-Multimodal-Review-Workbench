@@ -1,4 +1,4 @@
-from app.schemas.analysis import DiversionType, SceneAnalysis
+from app.schemas.analysis import ChannelizationAnalysis
 from app.schemas.risk import (
     FilterAction,
     FilterDecision,
@@ -8,65 +8,62 @@ from app.schemas.risk import (
 )
 
 
-def assess_risk(analysis: SceneAnalysis, validation: ValidationResult) -> RiskResult:
-    """将规则核验结果和模型证据转换为复核风险等级。"""
+def assess_risk(
+    analysis: ChannelizationAnalysis,
+    validation: ValidationResult,
+) -> RiskResult:
+    """将规则核验结果和外部复核信号转换为风险等级。"""
     reasons: list[str] = []
 
-    if analysis.confidence < 0.5:
-        reasons.append("low_confidence")
     if validation.rule_violations:
         reasons.extend(validation.rule_violations)
-    if analysis.negative_evidence:
-        reasons.append("negative_evidence_present")
+    if analysis.review_signals.risk_hints:
+        reasons.extend(analysis.review_signals.risk_hints)
 
-    # 只要存在明确冲突或弱信号，就优先交给人工复核。
-    if reasons:
+    # 模型判 true 但外部规则发现问题时，优先进入人工复核保护 precision。
+    if analysis.model_output.has_channelization and reasons:
         return RiskResult(risk_level=RiskLevel.needs_human_review, reasons=reasons)
 
-    if analysis.diversion_type == DiversionType.uncertain:
-        return RiskResult(
-            risk_level=RiskLevel.medium,
-            reasons=["diversion_type_uncertain"],
-        )
+    # 模型判 false 且 reason 质量较差时，也保留复核入口，避免漏掉稀疏正样本。
+    if not analysis.model_output.has_channelization and reasons:
+        return RiskResult(risk_level=RiskLevel.medium, reasons=reasons)
 
     return RiskResult(risk_level=RiskLevel.low, reasons=[])
 
 
 def decide_filter_action(
-    analysis: SceneAnalysis,
+    analysis: ChannelizationAnalysis,
     validation: ValidationResult,
     risk: RiskResult,
 ) -> FilterDecision:
-    """为单个样本选择最终数据挖掘动作。"""
-    # 规则未通过或风险不低时，不自动保留，也不自动丢弃。
-    if not validation.rule_pass or risk.risk_level != RiskLevel.low:
+    """为单个样本选择最终 keep/review/discard 动作。"""
+    if risk.risk_level in {RiskLevel.high, RiskLevel.needs_human_review}:
         return FilterDecision(
             action=FilterAction.review,
             reasons=risk.reasons or validation.rule_violations,
         )
 
-    # 高置信度的分流/合流样本是数据挖掘所需的有效正样本。
-    if (
-        analysis.diversion_type in {DiversionType.split, DiversionType.merge}
-        and analysis.confidence >= 0.75
-    ):
+    if risk.risk_level == RiskLevel.medium:
+        return FilterDecision(
+            action=FilterAction.review,
+            reasons=risk.reasons or ["medium_risk_sample"],
+        )
+
+    # 通过外部核验的 true 样本才进入导流区挖掘结果。
+    if analysis.model_output.has_channelization and validation.rule_pass:
         return FilterDecision(
             action=FilterAction.keep,
-            reasons=["high_confidence_diversion_scene"],
+            reasons=["validated_channelization_positive"],
         )
 
-    # 高置信度的非导流样本可以提前过滤，减少后续处理数据量。
-    if (
-        analysis.diversion_type == DiversionType.non_diversion
-        and analysis.confidence >= 0.7
-    ):
+    # 明确判 false 且没有复核风险的样本直接过滤掉。
+    if not analysis.model_output.has_channelization and validation.rule_pass:
         return FilterDecision(
             action=FilterAction.discard,
-            reasons=["high_confidence_non_diversion_scene"],
+            reasons=["validated_channelization_negative"],
         )
 
-    # 边界样本保留复核入口，以保护稀疏导流数据的召回率。
     return FilterDecision(
         action=FilterAction.review,
-        reasons=["confidence_or_evidence_not_decisive"],
+        reasons=validation.rule_violations or ["validation_not_decisive"],
     )

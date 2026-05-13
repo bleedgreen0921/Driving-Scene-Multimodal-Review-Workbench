@@ -2,17 +2,17 @@
 
 面向自动驾驶 / 道路场景的多模态质检、评测与人工复核工作台。
 
-本项目来源于道路导流场景多模态模型微调工作。系统接收道路场景图像或图文样本，使用微调后的多模态模型作为数据挖掘前置过滤器，自动判断样本是否属于分流导流或合流导流场景，并完成结构化结果生成、规则核验和风险判定；低置信度或高风险样本会进入人工复核队列。同时支持批量评测、bad case 分析和结果回流，重点展示多模态 AI 应用、结构化输出、工作流编排与 human-in-the-loop 工程能力。
+本项目来源于 V 形导流区多模态模型微调工作。系统接收道路场景图像或图文样本，在不修改既有微调标注规范和模型输出格式的前提下，使用微调后的多模态模型作为数据挖掘前置过滤器，判断图像中是否存在严格意义上的 V 形导流区；外部增强框架再对模型输出进行 reason 解析、规则核验、风险判定和人工复核分流。同时支持批量评测、bad case 分析和结果回流，重点展示多模态 AI 应用、结构化输出、工作流编排与 human-in-the-loop 工程能力。
 
 > 当前状态：项目规划阶段。本文档用于对外展示项目目标和最终交付形态，详细开发规划见 [docs/project-plan.md](docs/project-plan.md)。
 
 ## 项目亮点
 
 - 多模态输入：支持道路场景图像，以及可选的上下文文本、参考标注和规则模板。
-- 导流场景筛选：面向稀疏导流样本，区分分流导流、合流导流、非导流和不确定样本。
-- 结构化输出：使用固定 schema 约束模型结果，避免自由文本难以评测和回流。
-- 规则核验：用显式规则检查字段完整性、枚举合法性和场景逻辑一致性。
-- 风险判定：根据低置信度、规则冲突、字段缺失和异常解释标记风险等级。
+- V 形导流区筛选：复用既有微调模型输出 `has_channelization + reason`。
+- 外部增强框架：不改变模型任务定义，只在模型外部派生复核信号和质检结果。
+- 规则核验：检查正样本 reason 是否支撑“导流关系、轮廓完整、V 形结构、非 Y 形/多分叉”。
+- 风险判定：根据低置信度、规则冲突、reason 质量和疑似 Y 形/多分叉风险标记复核等级。
 - 人工复核：高风险样本进入复核队列，由人工批准、修改、驳回或重新分析。
 - 批量评测：支持离线样本集跑数，统计 schema 合规率、字段完整率、规则冲突率、人工复核率和 bad case。
 - 轻量工作台：提供上传、结果详情、人工复核和批量评测四类核心页面。
@@ -117,8 +117,8 @@ POST /api/samples/analyze
 Content-Type: multipart/form-data
 
 image=@road_scene.jpg
-context_text=Check whether this sample is a split or merge diversion scene.
-rule_profile=default_driving_scene
+context_text=Check whether this image contains a strict V-shape channelization area.
+rule_profile=default_v_channelization
 ```
 
 示例响应：
@@ -127,13 +127,20 @@ rule_profile=default_driving_scene
 {
   "task_id": "sample_001",
   "analysis": {
-    "is_diversion_scene": true,
-    "diversion_type": "split",
-    "key_objects": ["traffic_cone", "lane_marking", "temporary_sign"],
-    "visual_evidence": ["lane is guided away by cones"],
-    "negative_evidence": [],
-    "confidence": 0.82,
-    "explanation": "The cone layout guides traffic away from the original lane."
+    "model_output": {
+      "has_channelization": true,
+      "reason": "图像中部可见由两侧清晰边界和内部导流线构成的完整楔形导流区，该区域对主路与分流车道形成明确分隔，整体为 V形且不是 Y形或多分叉结构。"
+    },
+    "review_signals": {
+      "contour_complete": true,
+      "v_shape_visible": true,
+      "y_or_multi_fork_risk": false,
+      "evidence_sufficient": true,
+      "reason_quality_pass": true,
+      "extracted_evidence": ["v_shape_visible", "contour_complete", "diversion_evidence_sufficient"],
+      "risk_hints": []
+    },
+    "model_confidence": null
   },
   "validation": {
     "schema_valid": true,
@@ -146,7 +153,7 @@ rule_profile=default_driving_scene
   },
   "filter_decision": {
     "action": "keep",
-    "reasons": ["high_confidence_diversion_scene"]
+    "reasons": ["validated_channelization_positive"]
   },
   "review_status": "pending"
 }

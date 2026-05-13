@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.analysis import SceneAnalysis
+from app.schemas.analysis import ChannelizationAnalysis
 from app.schemas.review import ReviewStatus
 from app.schemas.risk import FilterDecision, RiskResult, ValidationResult
 
@@ -11,7 +11,7 @@ class SampleInput(BaseModel):
     sample_id: str
     image_path: str
     context_text: str | None = None
-    rule_profile: str = "default_driving_scene"
+    rule_profile: str = "default_v_channelization"
 
 
 class AnalyzeSampleResponse(BaseModel):
@@ -20,7 +20,7 @@ class AnalyzeSampleResponse(BaseModel):
     task_id: str
     filename: str
     rule_profile: str
-    analysis: SceneAnalysis
+    analysis: ChannelizationAnalysis
     validation: ValidationResult
     risk: RiskResult
     filter_decision: FilterDecision

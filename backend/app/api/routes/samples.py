@@ -10,7 +10,7 @@ router = APIRouter(prefix="/samples", tags=["samples"])
 async def analyze_sample(
     image: UploadFile = File(...),
     context_text: str | None = Form(default=None),
-    rule_profile: str = Form(default="default_driving_scene"),
+    rule_profile: str = Form(default="default_v_channelization"),
 ) -> AnalyzeSampleResponse:
     """使用当前 mock 流程分析一张上传的道路图像。"""
     return analyze_sample_mock(

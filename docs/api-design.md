@@ -21,7 +21,7 @@ Content-Type: multipart/form-data
 
 - `image`: 道路场景图片。
 - `context_text`: 可选，上下文、任务说明或已有模型输出。
-- `rule_profile`: 可选，规则模板名称，默认 `default_driving_scene`。
+- `rule_profile`: 可选，规则模板名称，默认 `default_v_channelization`。
 
 响应字段：
 
@@ -32,18 +32,23 @@ Content-Type: multipart/form-data
 - `filter_decision`
 - `review_status`
 
-`analysis.diversion_type` 使用粗粒度导流分类：
+`analysis.model_output` 保持和既有微调标注规范一致：
 
-- `split`: 分流导流
-- `merge`: 合流导流
-- `non_diversion`: 非导流
-- `uncertain`: 疑似或无法判断
+- `has_channelization`: 是否存在严格意义上的 V 形导流区。
+- `reason`: 模型基于图像可见内容给出的判断理由。
+
+`analysis.review_signals` 是外部增强框架派生的复核信号，不要求模型直接输出：
+
+- `contour_complete`: reason 是否支撑轮廓完整可见。
+- `v_shape_visible`: reason 是否明确说明 V 形、楔形或三角夹角结构。
+- `y_or_multi_fork_risk`: reason 是否暗示 Y 形、三叉或多分叉风险。
+- `evidence_sufficient`: reason 是否提供足够导流关系和视觉证据。
 
 `filter_decision.action` 用于数据挖掘前置过滤：
 
-- `keep`: 高置信导流样本，进入后续挖掘结果。
-- `review`: 低置信、冲突或证据不足，进入人工复核。
-- `discard`: 高置信非导流样本，过滤掉。
+- `keep`: 通过外部核验的 V 形导流区正样本，进入后续挖掘结果。
+- `review`: 低置信、reason 不充分、疑似 Y 形/多分叉或规则冲突样本，进入人工复核。
+- `discard`: 明确不满足 V 形导流区规范的负样本，过滤掉。
 
 ## Reviews
 

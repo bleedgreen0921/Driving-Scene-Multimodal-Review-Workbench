@@ -1,0 +1,31 @@
+name: default_v_channelization
+description: Default rule profile for strict V-shape channelization filtering.
+taxonomy:
+  model_output_fields:
+    - has_channelization
+    - reason
+required_fields:
+  - has_channelization
+  - reason
+confidence_thresholds:
+  low_confidence: 0.5
+  review_below: 0.5
+risk_rules:
+  - id: confidence_below_default_threshold
+    severity: high
+    description: Confidence is below the default threshold and should be reviewed.
+  - id: reason_too_short
+    severity: high
+    description: The model reason is too short to support review.
+  - id: positive_evidence_insufficient
+    severity: high
+    description: A positive prediction lacks sufficient visible evidence in reason.
+  - id: v_shape_evidence_missing
+    severity: high
+    description: A positive prediction does not explain the V-shape structure.
+  - id: contour_completeness_missing
+    severity: high
+    description: A positive prediction does not explain complete visible contour.
+  - id: y_or_multi_fork_conflict
+    severity: high
+    description: The reason suggests Y-shape, three-way fork, or multi-fork risk.
