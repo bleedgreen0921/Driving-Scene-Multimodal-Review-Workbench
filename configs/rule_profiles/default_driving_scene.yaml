@@ -1,0 +1,20 @@
+name: default_driving_scene
+description: Default rule profile for driving scene review.
+required_fields:
+  - scene_type
+  - key_objects
+  - confidence
+  - explanation
+confidence_thresholds:
+  low_confidence: 0.5
+  high_confidence: 0.8
+risk_rules:
+  - id: confidence_below_default_threshold
+    severity: high
+    description: Confidence is below the default threshold and should be reviewed.
+  - id: explanation_missing
+    severity: high
+    description: Explanation is missing or empty.
+  - id: scene_type_missing
+    severity: high
+    description: Scene type is missing.
